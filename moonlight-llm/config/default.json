@@ -1,0 +1,12 @@
+{
+  "host": "127.0.0.1",
+  "port": 11434,
+  "default_model": "llama3.2:3b",
+  "fallback_model": "llama3.2:1b",
+  "system_prompt": "You are Moonlight Local, a private assistant running entirely on this Mac. Be clear, concise, and helpful. Never claim to send data to the cloud — you cannot.",
+  "history_limit": 40,
+  "temperature": 0.7,
+  "stream": true,
+  "allow_remote": false,
+  "privacy_banner": true
+}

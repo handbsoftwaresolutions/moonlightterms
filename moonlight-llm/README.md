@@ -1,85 +1,63 @@
-# Moonlight Local
+# Moonlight DevSec
 
-**Fully private LLM in your Mac terminal.** Runs on-device via [Ollama](https://ollama.com). No API keys. No cloud models. No telemetry.
+Terminal specialist for **cybersecurity and software development** — not a general chatbot.
+
+**Model:** [GLM-5.2](https://ollama.com/library/glm-5.2) via Ollama (`glm-5.2:cloud`)
 
 ```
-you › Write a haiku about silence
-moonlight › Soft night holds its breath—
-            keys rest under quiet light,
-            thoughts stay on this Mac.
+dev › Harden this Nginx TLS config for TLS 1.3 only
+devsec › …concrete config + rationale…
 ```
 
-## Requirements
+## Why `:cloud`?
 
-- macOS (Apple Silicon or Intel)
-- Python 3.9+ (comes with macOS / Xcode CLT)
-- ~2–4 GB free disk for a small local model
+GLM-5.2 is a flagship ~756B-class model. It is **not** a consumer Mac local weight download. On Ollama the working tag is `glm-5.2:cloud` (CLI still talks to `127.0.0.1`; Ollama may forward inference). You may need:
+
+```bash
+ollama signin
+```
 
 ## Install (Mac)
 
-From this folder:
-
 ```bash
+cd moonlight-llm
 chmod +x install-mac.sh bin/moonlight
 ./install-mac.sh
-```
-
-That will:
-
-1. Install Ollama if needed  
-2. Start the **local** server on `127.0.0.1:11434`  
-3. Pull `llama3.2:3b` (local weights only)  
-4. Put `moonlight` on your PATH (`~/.local/bin`)
-
-Smaller model (faster, less RAM):
-
-```bash
-MOONLIGHT_MODEL=llama3.2:1b ./install-mac.sh
 ```
 
 ## Use
 
 ```bash
-moonlight                  # interactive private chat
-moonlight ask "Explain TLS like I'm 5"
-moonlight doctor           # health + privacy check
-moonlight privacy          # guarantees
-moonlight pull llama3.2:1b
-moonlight -m llama3.2:1b
+moonlight                                          # DevSec console
+moonlight ask "Threat-model this JWT refresh flow"
+moonlight doctor
+moonlight privacy
+moonlight pull glm-5.2:cloud
 ```
 
-### In-chat commands
+### In-console commands
 
 | Command | Action |
 |--------|--------|
-| `/help` | Show commands |
-| `/model name` | Switch local model |
-| `/models` | List installed models |
-| `/pull name` | Download a local model |
-| `/clear` | Clear current chat |
-| `/archive` | Save chat to disk archive |
-| `/privacy` | Privacy status |
+| `/help` | Commands + scope |
+| `/model` | Show/set model |
+| `/pull glm-5.2:cloud` | Register model |
+| `/clear` | Clear session |
+| `/privacy` | Endpoint + model policy |
 | `/exit` | Quit |
 
-## Privacy guarantees
+## Scope
 
-| Rule | Behavior |
-|------|----------|
-| Localhost only | Talks only to `127.0.0.1` / `localhost` |
-| No cloud models | Tags like `*:cloud` are rejected |
-| No remote hosts | `ollama.com`, OpenAI, etc. blocked in code |
-| No API keys | Nothing to leak |
-| Local history | `~/.moonlight-llm/chats/` on your Mac only |
+**In:** secure coding, defensive security, hardening, threat modeling, debugging, architecture, DevOps.
 
-Chats never leave your machine unless **you** copy them elsewhere.
+**Out:** casual chat, trivia, creative writing — and malware / weaponized exploit write-ups / unauthorized access help.
 
-## Uninstall
+## Policy notes
 
-```bash
-rm -f ~/.local/bin/moonlight
-rm -rf ~/.moonlight-llm
-# optional: remove Ollama app + models separately
-```
+- Client → Ollama on `127.0.0.1` only  
+- Only allowlisted cloud tag: `glm-5.2:cloud`  
+- Other `*:cloud` models stay blocked  
+- Session logs: `~/.moonlight-llm/chats/`
 
 ## Dev / test
 
@@ -87,17 +65,3 @@ rm -rf ~/.moonlight-llm
 ./bin/moonlight privacy
 python3 -m unittest discover -s tests -v
 ```
-
-## How it works
-
-```
-Terminal (moonlight)
-    │  HTTP 127.0.0.1 only
-    ▼
-Ollama (local)
-    │
-    ▼
-Model weights on disk  ← never uploaded
-```
-
-Built for Moonlight’s privacy-first ethos — your words stay yours.

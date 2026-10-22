@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Moonlight Local on macOS — fully private terminal LLM.
+# Install Moonlight DevSec on macOS — GLM-5.2 for cybersecurity & development.
 set -euo pipefail
 
 BOLD=$'\033[1m'
@@ -16,13 +16,19 @@ warn() { printf '%s!%s %s\n' "$WARN" "$RESET" "$*"; }
 die() { printf '%s✗%s %s\n' "$ERR" "$RESET" "$*" >&2; exit 1; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODEL="${MOONLIGHT_MODEL:-llama3.2:3b}"
+RAW_MODEL="${MOONLIGHT_MODEL:-glm-5.2:cloud}"
 BIN_DIR="${MOONLIGHT_BIN_DIR:-$HOME/.local/bin}"
 DATA_DIR="${MOONLIGHT_LLM_HOME:-$HOME/.moonlight-llm}"
 
+# Normalize friendly names → Ollama tag
+case "$(echo "$RAW_MODEL" | tr '[:upper:]' '[:lower:]')" in
+  "glm 5.2"|"glm5.2"|"glm-5.2"|"glm-5.2:cloud") MODEL="glm-5.2:cloud" ;;
+  *) MODEL="$RAW_MODEL" ;;
+esac
+
 say ""
-say "${BRAND}${BOLD}Moonlight Local${RESET} — private LLM for your Mac terminal"
-say "${DIM}Nothing leaves this machine. No API keys. No cloud models.${RESET}"
+say "${BRAND}${BOLD}Moonlight DevSec${RESET} — cyber + development terminal (not a chatbot)"
+say "${DIM}Default model: GLM-5.2 (glm-5.2:cloud via Ollama)${RESET}"
 say ""
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -35,9 +41,8 @@ ok "Python $(python3 --version 2>&1 | awk '{print $2}')"
 
 # --- Ollama ---
 if ! command -v ollama >/dev/null 2>&1; then
-  say "Installing Ollama (local inference engine)…"
+  say "Installing Ollama…"
   curl -fsSL https://ollama.com/install.sh | sh
-  # Apple Silicon / Intel app path
   if [[ -x "/Applications/Ollama.app/Contents/Resources/ollama" ]]; then
     export PATH="/Applications/Ollama.app/Contents/Resources:$PATH"
   fi
@@ -51,7 +56,6 @@ if ! curl -fsS "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1; then
   if [[ -d "/Applications/Ollama.app" ]]; then
     open -a Ollama 2>/dev/null || true
   fi
-  # Fallback headless serve
   if ! curl -fsS "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1; then
     nohup ollama serve >/tmp/moonlight-ollama.log 2>&1 &
   fi
@@ -63,14 +67,25 @@ if ! curl -fsS "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1; then
   done
 fi
 curl -fsS "http://127.0.0.1:11434/api/tags" >/dev/null 2>&1 || die "Could not reach Ollama on 127.0.0.1:11434"
-ok "Local server on 127.0.0.1:11434"
+ok "Ollama API on 127.0.0.1:11434"
 
-# --- Model (local weights only; reject :cloud) ---
+# --- Model policy ---
 case "$MODEL" in
-  *:cloud*|*"ollama.com"*) die "Cloud models are blocked. Use a local tag like llama3.2:3b" ;;
+  glm-5.2:cloud) ;;
+  *:cloud*)
+    die "Only allowlisted cloud model is glm-5.2:cloud (requested: $MODEL)"
+    ;;
 esac
 
-say "Pulling local model ${BOLD}${MODEL}${RESET} (stored on this Mac)…"
+if [[ "$MODEL" == "glm-5.2:cloud" ]]; then
+  warn "GLM-5.2 is ~756B — not downloadable as local Mac weights."
+  warn "Ollama uses :cloud (requires network + often: ollama signin)."
+  if command -v ollama >/dev/null 2>&1; then
+    ollama signin 2>/dev/null || warn "If pull fails, run: ollama signin"
+  fi
+fi
+
+say "Pulling ${BOLD}${MODEL}${RESET}…"
 ollama pull "$MODEL"
 ok "Model ready: $MODEL"
 
@@ -79,8 +94,9 @@ mkdir -p "$BIN_DIR" "$DATA_DIR"
 INSTALL_ROOT="$DATA_DIR/app"
 rm -rf "$INSTALL_ROOT"
 mkdir -p "$INSTALL_ROOT"
-# Copy package (no network after this for the app itself)
 cp -R "$ROOT/bin" "$ROOT/lib" "$ROOT/config" "$INSTALL_ROOT/"
+# Drop bytecode if any
+find "$INSTALL_ROOT" -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 chmod +x "$INSTALL_ROOT/bin/moonlight"
 
 WRAPPER="$BIN_DIR/moonlight"
@@ -93,12 +109,12 @@ exec python3 -m lib.cli "\$@"
 EOF
 chmod +x "$WRAPPER"
 
-# Seed user config (privacy locked)
 cat > "$DATA_DIR/config.json" <<EOF
 {
   "host": "127.0.0.1",
   "port": 11434,
   "default_model": "${MODEL}",
+  "mode": "devsec",
   "allow_remote": false,
   "privacy_banner": true
 }
@@ -106,7 +122,6 @@ EOF
 
 ok "CLI installed → $WRAPPER"
 
-# PATH hint
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *)
@@ -121,11 +136,11 @@ case ":$PATH:" in
 esac
 
 say ""
-say "${OK}${BOLD}You're private.${RESET} Start chatting:"
-say "  ${BOLD}moonlight${RESET}"
-say "  moonlight ask \"Summarize quantum entanglement in one sentence\""
+say "${OK}${BOLD}DevSec console ready.${RESET}"
+say "  ${BOLD}moonlight${RESET}                    # interactive console"
+say "  moonlight ask \"Review this auth middleware for IDOR\""
 say "  moonlight doctor"
 say "  moonlight privacy"
 say ""
-say "${DIM}Chats live in $DATA_DIR/chats — never uploaded.${RESET}"
+say "${DIM}Sessions: $DATA_DIR/chats  ·  scope: cyber + development only${RESET}"
 say ""

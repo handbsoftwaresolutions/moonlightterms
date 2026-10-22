@@ -96,10 +96,19 @@ class OllamaClientTests(unittest.TestCase):
         statuses = list(client.pull("llama3.2:1b"))
         self.assertTrue(any("success" in s or "manifest" in s for s in statuses))
 
-    def test_rejects_cloud_model(self) -> None:
+    def test_rejects_non_allowlisted_cloud_model(self) -> None:
         client = OllamaClient(host="127.0.0.1", port=self.port)
         with self.assertRaises(PrivacyError):
             list(client.chat_stream("gemma:cloud", [{"role": "user", "content": "x"}]))
+
+    def test_allows_glm52_cloud_tag(self) -> None:
+        client = OllamaClient(host="127.0.0.1", port=self.port)
+        # Tag is policy-allowed; mock server will answer any model name.
+        text = client.chat(
+            "glm-5.2:cloud",
+            [{"role": "user", "content": "review this auth code"}],
+        )
+        self.assertEqual(text, "Hello world")
 
 
 if __name__ == "__main__":
